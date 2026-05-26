@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "airules"
+version = "0.1.0"
+description = "A small, typed, declarative rules engine for Python."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Tomasz Bilaszewski" }]
+keywords = ["rules-engine", "rules", "predicates", "decision", "expert-system", "dsl", "typed"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = ["typing_extensions>=4.12"]
+
+[project.urls]
+Homepage = "https://github.com/tbilaszewski/ai-rules"
+Repository = "https://github.com/tbilaszewski/ai-rules"
+Issues = "https://github.com/tbilaszewski/ai-rules/issues"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "pyright>=1.1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["airules"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.pyright]
+include = ["airules", "tests", "examples"]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
