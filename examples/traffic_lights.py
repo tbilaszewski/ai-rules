@@ -37,23 +37,25 @@ class CrossingAdvisor(KnowledgeEngine[Crossing, str]):
     """
 
     @Rule(Crossing.hazards.contains("flooding") | Crossing.hazards.contains("ice"))
-    def hazard_present(self) -> str:
-        return "Do not cross — hazard reported"
+    def hazard_present(self, crossing: Crossing) -> str:
+        hazards = ", ".join(crossing.hazards or [])
+        return f"Do not cross — hazard reported: {hazards}"
 
     @Rule(Crossing.sensor.approaching_speed_kph.ge(50))
-    def fast_vehicle(self) -> str:
-        return "Wait — a fast vehicle is approaching"
+    def fast_vehicle(self, crossing: Crossing) -> str:
+        speed = crossing.sensor.approaching_speed_kph if crossing.sensor else 0
+        return f"Wait — a vehicle is approaching at {speed} kph"
 
     @Rule(Crossing.signal.eq("green") & Crossing.seconds_left.ge(10))
-    def safe(self) -> str:
-        return "Safe to cross"
+    def safe(self, crossing: Crossing) -> str:
+        return f"Safe to cross — {crossing.seconds_left}s of green left"
 
     @Rule(Crossing.signal.eq("red") | Crossing.signal.eq("yellow"))
-    def stop(self) -> str:
+    def stop(self, crossing: Crossing) -> str:
         return "Stop — wait for green"
 
     @Default
-    def wait(self) -> str:
+    def wait(self, crossing: Crossing) -> str:
         # Reached e.g. when the light is green but too little time remains.
         return "Wait for the next signal"
 

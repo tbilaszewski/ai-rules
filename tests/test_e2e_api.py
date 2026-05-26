@@ -11,19 +11,19 @@ class Light(Fact):
 
 class LightsCrossing(KnowledgeEngine[Light, str]):
     @Rule(Light.color.eq("green"))
-    def green(self):
+    def green(self, light: Light):
         return "Safe to walk"
 
     @Rule(Light.color.eq("yellow"))
-    def yellow(self):
+    def yellow(self, light: Light):
         return "Better hurry up"
 
     @Rule(Light.color.eq("red") | Light.color.eq("yellow"))
-    def red(self):
+    def red(self, light: Light):
         return "Don't walk!"
 
     @Default
-    def unknown(self):
+    def unknown(self, light: Light):
         return "Unknown signal"
 
 
@@ -95,19 +95,19 @@ class TrafficFact(Light, Car):
 
 class TrafficCrossing(KnowledgeEngine[Light | TrafficFact, str]):
     @Rule(Light.color.eq("green") & Car.car_color.eq("red"))
-    def safe(self):
+    def safe(self, fact: Light | TrafficFact):
         return "Safe to cross"
 
     @Rule(Light.color.eq("yellow"))
-    def caution(self):
+    def caution(self, fact: Light | TrafficFact):
         return "Caution"
 
     @Rule(Light.color.eq("red"))
-    def stop(self):
+    def stop(self, fact: Light | TrafficFact):
         return "Stop"
 
     @Default
-    def wait(self):
+    def wait(self, fact: Light | TrafficFact):
         return "Wait"
 
 

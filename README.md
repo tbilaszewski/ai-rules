@@ -55,11 +55,11 @@ class Order(Fact):
 
 class Discount(KnowledgeEngine[Order, str]):
     @Rule(Order.total.ge(100))
-    def big(self):
+    def big(self, order: Order):
         return "10% off"
 
     @Default
-    def small(self):
+    def small(self, order: Order):
         return "no discount"
 
 Discount().run(Order(total=120))   # -> "10% off"
@@ -178,26 +178,28 @@ predicates serialized before this flag existed load unchanged.
 
 A `KnowledgeEngine` collects `@Rule(...)` methods on the class and evaluates
 them top-to-bottom against an input fact. The **first** matching rule wins; its
-method is called and its return value is returned from `run(...)`.
+method is called with the matched fact and its return value is returned from
+`run(...)`. Each rule method takes `(self, fact)`, so the action can read the
+values it matched on.
 
 ```python
 from airules import KnowledgeEngine, Rule, Default
 
 class TrafficAdvice(KnowledgeEngine[Light, str]):
     @Rule(Light.color.eq("green"))
-    def green(self):
+    def green(self, light: Light):
         return "go"
 
     @Rule(Light.color.eq("yellow") & Light.remaining_time.gt(5))
-    def yellow_safe(self):
-        return "still time"
+    def yellow_safe(self, light: Light):
+        return f"still {light.remaining_time}s"
 
     @Rule(Light.color.eq("yellow") | Light.color.eq("red"))
-    def stop(self):
+    def stop(self, light: Light):
         return "stop"
 
     @Default
-    def fallback(self):
+    def fallback(self, light: Light):
         return "unknown signal"
 ```
 
@@ -210,7 +212,7 @@ declaration order.
 
 ```python
 @Rule(some_predicate, priority=100)   # checked before priority=10
-def high_priority(self): ...
+def high_priority(self, fact): ...
 ```
 
 If no rule matches and there is no `@Default`, `run` returns `None`.

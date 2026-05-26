@@ -41,7 +41,7 @@ class KnowledgeEngine(Generic[T, R]):
     def run(self, value: T) -> R | None:
         for entry in self.rules:
             if entry.predicate(value):
-                return entry.method(self)
+                return entry.method(self, value)
         return None
 
     @classmethod

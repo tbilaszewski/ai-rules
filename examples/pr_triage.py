@@ -43,11 +43,11 @@ class MergeGate(KnowledgeEngine[PullRequest, Verdict]):
         PullRequest.title.startswith("wip", case_insensitive=True)
         | PullRequest.title.contains("do not merge", case_insensitive=True)
     )
-    def block(self) -> Verdict:
+    def block(self, pr: PullRequest) -> Verdict:
         return Verdict.BLOCK
 
     @Rule(PullRequest.labels.contains("security"))
-    def security(self) -> Verdict:
+    def security(self, pr: PullRequest) -> Verdict:
         # A security label always wins over auto-merge, even for a tiny diff.
         return Verdict.SECURITY_REVIEW
 
@@ -56,11 +56,11 @@ class MergeGate(KnowledgeEngine[PullRequest, Verdict]):
         & PullRequest.additions.le(50)
         & PullRequest.labels.contains("dependencies")
     )
-    def auto_merge(self) -> Verdict:
+    def auto_merge(self, pr: PullRequest) -> Verdict:
         return Verdict.AUTO_MERGE
 
     @Default
-    def needs_review(self) -> Verdict:
+    def needs_review(self, pr: PullRequest) -> Verdict:
         return Verdict.NEEDS_REVIEW
 
 

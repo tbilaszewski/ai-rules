@@ -15,35 +15,35 @@ class Vehicle(Fact):
 
 class ThreeRule(KnowledgeEngine[Light, str]):
     @Rule(Light.color.eq("green"))
-    def first(self):
+    def first(self, light: Light):
         return "first"
 
     @Rule(Light.color.eq("yellow"))
-    def second(self):
+    def second(self, light: Light):
         return "second"
 
     @Rule(Light.color.eq("red"))
-    def third(self):
+    def third(self, light: Light):
         return "third"
 
 
 class WithDefault(KnowledgeEngine[Light, str]):
     @Rule(Light.color.eq("green"))
-    def specific(self):
+    def specific(self, light: Light):
         return "specific"
 
     @Default
-    def fallback(self):
+    def fallback(self, light: Light):
         return "fallback"
 
 
 class WithExplicitPriority(KnowledgeEngine[Light, str]):
     @Rule(Light.color.eq("green"))
-    def low(self):
+    def low(self, light: Light):
         return "low"
 
     @Rule(Light.color.eq("green"), priority=999)
-    def high(self):
+    def high(self, light: Light):
         return "high"
 
 
@@ -74,6 +74,36 @@ class TestAutoPriority:
 class TestExplicitPriority:
     def test_explicit_priority_wins_over_auto(self):
         assert WithExplicitPriority().run(Light(color="green")) == "high"
+
+
+class Echo(KnowledgeEngine[Light, str]):
+    @Rule(Light.color.eq("green"))
+    def matched(self, light: Light) -> str:
+        return f"matched {light.color}"
+
+    @Default
+    def fell_through(self, light: Light) -> str:
+        return f"default {light.color}"
+
+
+class TestFactInjection:
+    def test_matched_rule_receives_the_evaluated_fact(self):
+        assert Echo().run(Light(color="green")) == "matched green"
+
+    def test_default_rule_also_receives_the_evaluated_fact(self):
+        assert Echo().run(Light(color="red")) == "default red"
+
+    def test_the_exact_instance_is_passed_through(self):
+        seen: list[Light] = []
+
+        class Capture(KnowledgeEngine[Light, None]):
+            @Default
+            def grab(self, light: Light) -> None:
+                seen.append(light)
+
+        fact = Light(color="green")
+        Capture().run(fact)
+        assert seen == [fact] and seen[0] is fact
 
 
 class TestFirstMatchSemantics:
