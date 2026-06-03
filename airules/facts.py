@@ -171,6 +171,10 @@ class Fact:
             elif field.has_default:
                 setattr(self, name, field._default)
 
+    def __repr__(self) -> str:
+        values = {name: getattr(self, name) for name in self.schema()["fields"]}
+        return f"{type(self).__name__}({values!r})"
+
     @classmethod
     def schema(cls) -> dict[str, Any]:
         hints = get_type_hints(cls)

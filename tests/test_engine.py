@@ -171,3 +171,37 @@ class TestDescribe:
         payload = UnionEngine.describe()
         names = {f["name"] for f in payload["facts"]}
         assert names == {"Light", "Vehicle"}
+
+
+class TestEvaluateOutcome:
+    def test_outcome_exposes_matched_rule_name_and_result(self):
+        outcome = Echo().evaluate(Light(color="green"))
+        assert outcome.matched is True
+        assert outcome.is_default is False
+        assert outcome.rule_name == "matched"
+        assert outcome.result == "matched green"
+
+    def test_outcome_flags_default_fall_through(self):
+        outcome = Echo().evaluate(Light(color="red"))
+        assert outcome.matched is True
+        assert outcome.is_default is True
+        assert outcome.rule_name == "fell_through"
+        assert outcome.result == "default red"
+
+    def test_outcome_when_nothing_matches_has_no_rule(self):
+        outcome = ThreeRule().evaluate(Light(color="orange"))  # type: ignore[arg-type]
+        assert outcome.matched is False
+        assert outcome.is_default is False
+        assert outcome.rule_name is None
+        assert outcome.result is None
+
+    def test_outcome_carries_the_evaluated_fact_instance(self):
+        fact = Light(color="green")
+        outcome = Echo().evaluate(fact)
+        assert outcome.fact is fact
+
+    def test_run_returns_the_outcome_result(self):
+        engine = Echo()
+        for color in ("green", "red"):
+            light = Light(color=color)  # type: ignore[arg-type]
+            assert engine.run(light) == engine.evaluate(light).result

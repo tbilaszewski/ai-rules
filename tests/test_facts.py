@@ -2,7 +2,7 @@ from typing import Literal
 
 import pytest
 
-from airules import Fact, Field, NumberField
+from airules import EmbeddedField, Fact, Field, ListField, NumberField, StringField
 from airules.predicates import Gt
 
 Color = Literal["green", "red", "yellow"]
@@ -114,3 +114,32 @@ class TestSchema:
 
     def test_schema_for_multiple_inheritance(self):
         assert set(HybridFact.schema()["fields"]) == {"color", "speed"}
+
+
+class TestRepr:
+    def test_repr_is_dict_like_over_fields(self):
+        class Person(Fact):
+            name: StringField
+            age: NumberField[int]
+
+        p = Person(name="Ada", age=36)
+        assert repr(p) == "Person({'name': 'Ada', 'age': 36})"
+
+    def test_repr_recurses_into_embedded_facts(self):
+        class Address(Fact):
+            city: StringField
+
+        class Customer(Fact):
+            name: StringField
+            address: EmbeddedField[Address]
+
+        c = Customer(name="Ada", address=Address(city="London"))
+        assert repr(c) == (
+            "Customer({'name': 'Ada', 'address': Address({'city': 'London'})})"
+        )
+
+    def test_repr_is_eval_independent_but_readable(self):
+        class Tag(Fact):
+            labels: ListField[str] = ListField(default=None)
+
+        assert repr(Tag(labels=["a", "b"])) == "Tag({'labels': ['a', 'b']})"

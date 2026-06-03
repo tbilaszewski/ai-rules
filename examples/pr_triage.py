@@ -86,6 +86,12 @@ def main() -> None:
         "large feature": PullRequest(
             title="Add billing report export", additions=640, author="contributor"
         ),
+        "security wrong case": PullRequest(
+            title="Bump lodash to patch CVE",
+            additions=8,
+            author="member",
+            labels=["SECURITY"],
+        ),
     }
 
     print("Merge gate")
