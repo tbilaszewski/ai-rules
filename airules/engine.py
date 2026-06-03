@@ -59,10 +59,14 @@ class OutcomeObserver(Protocol[T, R]):
 
     Implementations decide what to do with each ``Outcome`` — log it, count
     fall-throughs, aggregate insights. The engine stays free of those concerns;
-    it only calls :meth:`observe`.
+    it only calls :meth:`observe`, handing over the ``Outcome`` together with the
+    ``engine`` that produced it (so observers can reach ``engine.describe()``,
+    its rules, etc. without being constructed against a specific instance).
     """
 
-    def observe(self, outcome: "Outcome[T, R]") -> None: ...
+    def observe(
+        self, outcome: "Outcome[T, R]", engine: "KnowledgeEngine[T, R]"
+    ) -> None: ...
 
 
 class KnowledgeEngine(Generic[T, R]):
@@ -106,7 +110,7 @@ class KnowledgeEngine(Generic[T, R]):
                 )
                 break
         if self._observer is not None:
-            self._observer.observe(outcome)
+            self._observer.observe(outcome, self)
         return outcome
 
     def run(self, value: T) -> R | None:

@@ -11,7 +11,7 @@ import logging
 
 from typing_extensions import TypeVar
 
-from .engine import Outcome, OutcomeObserver
+from .engine import KnowledgeEngine, Outcome, OutcomeObserver
 from .facts import Fact
 
 T = TypeVar("T", bound=Fact)
@@ -31,9 +31,10 @@ class LoggingObserver(OutcomeObserver[T, R]):
     def __init__(self, log: logging.Logger | None = None) -> None:
         self._log = log if log is not None else logger
 
-    def observe(self, outcome: Outcome[T, R]) -> None:
+    def observe(self, outcome: Outcome[T, R], engine: KnowledgeEngine[T, R]) -> None:
         if not outcome.matched:
             self._log.warning(f"decision: no rule matched | fact={outcome.fact!r}")
+
         elif outcome.is_default:
             self._log.warning(
                 f"decision: default | rule={outcome.rule_name} "
@@ -44,3 +45,5 @@ class LoggingObserver(OutcomeObserver[T, R]):
                 f"decision: matched | rule={outcome.rule_name} "
                 f"result={outcome.result!r}"
             )
+
+        self._log.info(f"engine schema {engine.describe()}")
