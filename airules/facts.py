@@ -17,14 +17,44 @@ from .fields import MISSING, Field, ListField, NumberField, StringField, _Missin
 F = TypeVar("F", bound="Fact")
 
 
+def _field_value_type(field_cls: type) -> Any | None:
+    """Resolve the value type a Field subclass constrains, e.g. StringField -> str.
+
+    Walks the ``Field[X]`` base so a *bare* wrapper annotation reports the value
+    type, not the wrapper class name. Returns ``None`` when the parameter is
+    still a TypeVar (e.g. an unparametrized ``NumberField``).
+    """
+    for base in getattr(field_cls, "__orig_bases__", ()):
+        origin = get_origin(base)
+        if isinstance(origin, type) and issubclass(origin, Field):
+            arg = get_args(base)[0]
+            if isinstance(arg, type) or get_origin(arg) is Literal:
+                return arg
+    return None
+
+
+def _describe_type(annotation: Any) -> dict[str, Any]:
+    """Describe a concrete value type: a builtin, a Literal, or an embedded Fact."""
+    if get_origin(annotation) is Literal:
+        return {"type": "Literal", "values": list(get_args(annotation))}
+    if isinstance(annotation, type) and issubclass(annotation, Fact):
+        return {"type": "Fact", "schema": annotation.schema()}
+    if isinstance(annotation, type) and issubclass(annotation, Field):
+        resolved = _field_value_type(annotation)
+        if resolved is not None:
+            return _describe_type(resolved)
+    return {"type": getattr(annotation, "__name__", str(annotation))}
+
+
 def _describe_annotation(annotation: Any) -> dict[str, Any]:
+    origin = get_origin(annotation)
+    if isinstance(origin, type) and issubclass(origin, ListField):
+        args = get_args(annotation)
+        element = args[0] if args else Any
+        return {"type": "list", "items": _describe_type(element)}
     args = get_args(annotation)
     inner = args[0] if args else annotation
-    if get_origin(inner) is Literal:
-        return {"type": "Literal", "values": list(get_args(inner))}
-    if isinstance(inner, type) and issubclass(inner, Fact):
-        return {"type": "Fact", "schema": inner.schema()}
-    return {"type": getattr(inner, "__name__", str(inner))}
+    return _describe_type(inner)
 
 
 def _resolve_field_class(annotation: Any) -> type[Field[Any]] | None:
@@ -183,4 +213,7 @@ class Fact:
             "fields": {
                 name: _describe_annotation(hints.get(name)) for name in cls._fields
             },
+            "required": [
+                name for name, field in cls._fields.items() if not field.has_default
+            ],
         }

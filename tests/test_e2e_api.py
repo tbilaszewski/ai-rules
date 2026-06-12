@@ -56,6 +56,7 @@ class TestDescribePayload:
                         "values": ["green", "red", "yellow"],
                     }
                 },
+                "required": ["color"],
             }
         ]
 

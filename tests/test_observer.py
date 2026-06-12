@@ -33,7 +33,7 @@ class Recorder(OutcomeObserver[Light, str]):
     def __init__(self) -> None:
         self.seen: list[Outcome[Light, str]] = []
 
-    def observe(self, outcome: Outcome[Light, str]) -> None:
+    def observe(self, outcome: Outcome[Light, str], engine: KnowledgeEngine[Light, str]) -> None:
         self.seen.append(outcome)
 
 

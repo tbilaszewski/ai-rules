@@ -46,4 +46,3 @@ class LoggingObserver(OutcomeObserver[T, R]):
                 f"result={outcome.result!r}"
             )
 
-        self._log.info(f"engine schema {engine.describe()}")
