@@ -35,6 +35,18 @@ This library gives that pattern first-class structure:
 - **`describe()`** dumps the whole rule set as a dict — useful for docs,
   diffing, or feeding into an external UI.
 
+There is a second, practical reason to reach for a rules engine: **AI
+inference is expensive, and programmatic evaluation is not.** Every LLM call
+adds latency and API cost; a rules engine running in-process costs
+microseconds and zero budget per decision.
+
+The key insight is that most decisions are already known. If a programmer or
+product owner can write down the right answer for a given input pattern, that
+knowledge belongs in a rule — deterministic, auditable, testable, and free to
+run. AI earns its cost on the genuinely unknown tail: inputs that fall outside
+every rule, the cases nobody anticipated at design time. A rules engine acts
+as a cheap first-pass filter; only unmatched facts need to escalate to a model.
+
 ## Install
 
 The project uses [uv](https://docs.astral.sh/uv/):
@@ -246,6 +258,70 @@ TrafficAdvice.describe()
 This is the canonical way to render a rule set in an external tool, diff two
 versions, or persist them to a store. Combined with `Predicate.from_dict`,
 predicates round-trip cleanly.
+
+## LLM as last resort
+
+The engine doubles as a pre-filter in front of an LLM. Deterministic rules
+cover the known cases for free; `@Default` calls the model only for inputs
+that fall outside every rule — the ones nobody anticipated.
+
+```python
+from enum import Enum
+from pydantic_ai import Agent
+from airules import Default, Fact, KnowledgeEngine, Rule, StringField
+
+class Team(Enum):
+    BILLING  = "billing"
+    AUTH     = "auth"
+    SHIPPING = "shipping"
+    RETURNS  = "returns"
+    GENERAL  = "general"
+
+class Ticket(Fact):
+    subject: StringField
+    body:    StringField
+
+_TEAM_VALUES = ", ".join(t.value for t in Team)
+
+_agent = Agent(
+    "anthropic:claude-haiku-4-5",
+    result_type=Team,
+    system_prompt=(
+        f"Classify a support ticket into exactly one of: {_TEAM_VALUES}. "
+        "Reply with the team name only."
+    ),
+)
+
+class TicketRouter(KnowledgeEngine[Ticket, Team]):
+
+    @Rule(Ticket.subject.contains("billing", case_insensitive=True)
+          | Ticket.body.contains("invoice", case_insensitive=True))
+    def billing(self, ticket: Ticket) -> Team:
+        return Team.BILLING
+
+    @Rule(Ticket.subject.contains("password", case_insensitive=True)
+          | Ticket.subject.contains("login",    case_insensitive=True))
+    def auth(self, ticket: Ticket) -> Team:
+        return Team.AUTH
+
+    @Rule(Ticket.subject.contains("return", case_insensitive=True)
+          | Ticket.subject.contains("refund", case_insensitive=True))
+    def returns(self, ticket: Ticket) -> Team:
+        return Team.RETURNS
+
+    @Default
+    def llm_fallback(self, ticket: Ticket) -> Team:
+        """Only reached when no rule matched — the genuinely unknown case."""
+        result = _agent.run_sync(f"Subject: {ticket.subject}\n\n{ticket.body}")
+        return result.output
+```
+
+An "invoice" or "password" ticket never hits the API. A ticket about a broken
+screen reader on the checkout page does — and the model handles it correctly
+without you having written a rule for it.
+
+See [`examples/llm_fallback.py`](./examples/llm_fallback.py) for the full
+runnable version.
 
 ## A larger example
 
