@@ -1,5 +1,7 @@
 from typing import Literal
 
+import pytest
+
 from airules import Default, Fact, Field, KnowledgeEngine, Rule
 
 Color = Literal["green", "red", "yellow"]
@@ -205,3 +207,56 @@ class TestEvaluateOutcome:
         for color in ("green", "red"):
             light = Light(color=color)  # type: ignore[arg-type]
             assert engine.run(light) == engine.evaluate(light).result
+
+
+class AsyncEcho(KnowledgeEngine[Light, str]):
+    @Rule(Light.color.eq("green"))
+    async def matched(self, light: Light) -> str:
+        return f"matched {light.color}"
+
+    @Default
+    async def fell_through(self, light: Light) -> str:
+        return f"default {light.color}"
+
+
+class TestAsyncMethods:
+    @pytest.mark.asyncio
+    async def test_async_rule_is_awaited_and_returns_result(self):
+        assert await AsyncEcho().run_async(Light(color="green")) == "matched green"
+
+    @pytest.mark.asyncio
+    async def test_async_default_is_awaited_on_fallthrough(self):
+        assert await AsyncEcho().run_async(Light(color="red")) == "default red"
+
+    @pytest.mark.asyncio
+    async def test_sync_rule_works_in_run_async(self):
+        assert await Echo().run_async(Light(color="green")) == "matched green"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_async_outcome_has_correct_metadata(self):
+        outcome = await AsyncEcho().evaluate_async(Light(color="green"))
+        assert outcome.matched is True
+        assert outcome.is_default is False
+        assert outcome.rule_name == "matched"
+        assert outcome.result == "matched green"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_async_unmatched_returns_empty_outcome(self):
+        outcome = await ThreeRule().evaluate_async(Light(color="orange"))  # type: ignore[arg-type]
+        assert outcome.matched is False
+        assert outcome.result is None
+
+    @pytest.mark.asyncio
+    async def test_mixed_sync_and_async_rules_both_fire(self):
+        class Mixed(KnowledgeEngine[Light, str]):
+            @Rule(Light.color.eq("green"))
+            def sync_rule(self, light: Light) -> str:
+                return "sync"
+
+            @Default
+            async def async_default(self, light: Light) -> str:
+                return "async"
+
+        engine = Mixed()
+        assert await engine.run_async(Light(color="green")) == "sync"
+        assert await engine.run_async(Light(color="red")) == "async"

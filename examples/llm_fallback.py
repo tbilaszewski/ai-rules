@@ -12,6 +12,7 @@ Install PydanticAI with the OpenAI provider before running:
     uv add "pydantic-ai[openai]"
 """
 
+import asyncio
 import json
 from enum import Enum
 
@@ -73,7 +74,7 @@ class TicketRouter(KnowledgeEngine[Ticket, Team]):
         return Team.RETURNS
 
     @Default
-    def llm_fallback(self, ticket: Ticket) -> Team:
+    async def llm_fallback(self, ticket: Ticket) -> Team:
         """Called only when no deterministic rule matches.
 
         The rule schema from describe() is included in the system prompt so the
@@ -93,11 +94,11 @@ class TicketRouter(KnowledgeEngine[Ticket, Team]):
                 f"Existing rules:\n{rules_schema}"
             ),
         )
-        result = agent.run_sync(f"Subject: {ticket.subject}\n\n{ticket.body}")
+        result = await agent.run(f"Subject: {ticket.subject}\n\n{ticket.body}")
         return result.output
 
 
-def main() -> None:
+async def main() -> None:
     router = TicketRouter()
 
     tickets: list[tuple[str, Ticket]] = [
@@ -133,14 +134,15 @@ def main() -> None:
         ),
     ]
 
+    results = await asyncio.gather(*[router.run_async(ticket) for _, ticket in tickets])
+
     print("Ticket routing")
     print("--------------")
-    for label, ticket in tickets:
-        team = router.run(ticket)
+    for (label, ticket), team in zip(tickets, results):
         print(f"  [{label}]")
         print(f"    subject : {ticket.subject}")
         print(f"    → {team.value if team else None}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

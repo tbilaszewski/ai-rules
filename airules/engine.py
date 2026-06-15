@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass
 from types import UnionType
 from typing import (
@@ -95,7 +96,7 @@ class KnowledgeEngine(Generic[T, R]):
         ]
         cls.rules = sorted(entries, key=lambda e: (e.is_default, -e.priority))
 
-    def evaluate(self, value: T) -> Outcome[T, R]:
+    def evaluate(self, value: T) -> "Outcome[T, R]":
         """Evaluate ``value`` and return the full ``Outcome``.
 
         Unlike :meth:`run`, this preserves *which* rule matched, so callers can
@@ -113,8 +114,26 @@ class KnowledgeEngine(Generic[T, R]):
             self._observer.observe(outcome, self)
         return outcome
 
-    def run(self, value: T) -> R | None:
+    def run(self, value: T) -> "R | None":
         return self.evaluate(value).result
+
+    async def evaluate_async(self, value: T) -> "Outcome[T, R]":
+        """Async variant of :meth:`evaluate` — awaits rule methods that are coroutines."""
+        outcome: Outcome[T, R] = Outcome(fact=value, rule=None, result=None)
+        for entry in self.rules:
+            if entry.predicate(value):
+                result = entry.method(self, value)
+                if inspect.isawaitable(result):
+                    result = await result
+                outcome = Outcome(fact=value, rule=entry, result=result)
+                break
+        if self._observer is not None:
+            self._observer.observe(outcome, self)
+        return outcome
+
+    async def run_async(self, value: T) -> "R | None":
+        """Async variant of :meth:`run` — awaits rule methods that are coroutines."""
+        return (await self.evaluate_async(value)).result
 
     @classmethod
     def _fact_types(cls) -> tuple[type[Fact], ...]:
