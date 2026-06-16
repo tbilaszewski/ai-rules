@@ -18,6 +18,8 @@ ever run the engine.
 > Status: experimental (0.0.1). The API is small and stable in spirit, but
 > details may still change.
 
+[Documentation](https://ai-rules-eight.vercel.app/)
+
 ## Why
 
 Most "if/elif" decision code in production systems is really a rule set in
@@ -49,10 +51,8 @@ as a cheap first-pass filter; only unmatched facts need to escalate to a model.
 
 ## Install
 
-The project uses [uv](https://docs.astral.sh/uv/):
-
 ```bash
-uv sync
+pip install ai-rules-engine
 ```
 
 Python 3.11+ is required. The only runtime dependency is `typing_extensions`.

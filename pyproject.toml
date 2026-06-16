@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "airules"
+name = "ai-rules-engine"
 version = "0.1.0"
 description = "A small, typed, declarative rules engine for Python."
 readme = "README.md"
